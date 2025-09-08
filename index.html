@@ -3,71 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sensor Permission Check</title>
+  <title>Safari Sensor Permission Test</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     h1 { font-size: 1.5rem; }
     ul { list-style: none; padding: 0; }
-    li { margin: 10px 0; font-size: 1.2rem; }
+    li { margin: 10px 0; font-size: 1.1rem; }
     .success { color: green; }
     .fail { color: red; }
-    button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; display: none; }
+    .pending { color: orange; }
+    button { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; }
+    #downloadBtn { margin-top: 20px; padding: 10px 20px; font-size: 1rem; display: none; }
   </style>
 </head>
 <body>
-  <h1>Sensor Permission Status</h1>
+  <h1>Sensor Permission Status (Safari Test)</h1>
   <ul id="sensorList">
-    <li id="accelerometer">Accelerometer: <span>⏳ Checking...</span></li>
-    <li id="gyroscope">Gyroscope: <span>⏳ Checking...</span></li>
-    <li id="magnetometer">Magnetometer: <span>⏳ Checking...</span></li>
-    <li id="ambientLight">Ambient Light: <span>⏳ Checking...</span></li>
+    <li id="accelerometer">Accelerometer: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('accelerometer')">Request</button></li>
+    <li id="gyroscope">Gyroscope: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('gyroscope')">Request</button></li>
+    <li id="magnetometer">Magnetometer: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('magnetometer')">Request</button></li>
+    <li id="ambientLight">Ambient Light: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('ambientLight')">Request</button></li>
+    <li id="absoluteOrientation">Absolute Orientation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('absoluteOrientation')">Request</button></li>
+    <li id="relativeOrientation">Relative Orientation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('relativeOrientation')">Request</button></li>
+    <li id="proximity">Proximity: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('proximity')">Request</button></li>
+    <li id="geolocation">Geolocation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('geolocation')">Request</button></li>
   </ul>
   <button id="downloadBtn">Download Report</button>
 
   <script>
-    const sensors = ["accelerometer", "gyroscope", "magnetometer", "ambientLight"];
     const results = {};
 
-    async function checkPermissions() {
-      for (let sensor of sensors) {
-        try {
-          let granted = false;
-          if ("permissions" in navigator) {
-            let permName;
-            switch(sensor) {
-              case "accelerometer": permName = "accelerometer"; break;
-              case "gyroscope": permName = "gyroscope"; break;
-              case "magnetometer": permName = "magnetometer"; break;
-              case "ambientLight": permName = "ambient-light-sensor"; break;
-            }
-
-            if (permName) {
-              const status = await navigator.permissions.query({name: permName}).catch(() => null);
-              granted = status && status.state === "granted";
-            }
-          }
-
-          updateUI(sensor, granted);
-          results[sensor] = granted ? "Granted" : "Denied";
-        } catch (err) {
-          updateUI(sensor, false);
-          results[sensor] = "Denied";
+    async function requestSensor(sensor) {
+      try {
+        if (sensor === "geolocation") {
+          navigator.geolocation.getCurrentPosition(
+            () => updateUI(sensor, true),
+            () => updateUI(sensor, false)
+          );
+          return;
         }
-      }
 
-      if (Object.values(results).length === sensors.length) {
-        document.getElementById("downloadBtn").style.display = "inline-block";
+        let SensorClass;
+        switch(sensor) {
+          case "accelerometer": SensorClass = window.Accelerometer; break;
+          case "gyroscope": SensorClass = window.Gyroscope; break;
+          case "magnetometer": SensorClass = window.Magnetometer; break;
+          case "ambientLight": SensorClass = window.AmbientLightSensor; break;
+          case "absoluteOrientation": SensorClass = window.AbsoluteOrientationSensor; break;
+          case "relativeOrientation": SensorClass = window.RelativeOrientationSensor; break;
+          case "proximity": SensorClass = window.ProximitySensor; break;
+        }
+
+        if (!SensorClass) {
+          updateUI(sensor, false, "Not supported");
+          return;
+        }
+
+        const sensorObj = new SensorClass({frequency: 1});
+        sensorObj.addEventListener("activate", () => updateUI(sensor, true));
+        sensorObj.addEventListener("error", () => updateUI(sensor, false));
+        sensorObj.start();
+      } catch (err) {
+        updateUI(sensor, false);
       }
     }
 
-    function updateUI(sensor, granted) {
+    function updateUI(sensor, granted, reason = null) {
       const el = document.getElementById(sensor).querySelector("span");
       if (granted) {
         el.textContent = "✔️ Granted";
         el.className = "success";
+        results[sensor] = "Granted";
       } else {
-        el.textContent = "❌ Denied";
+        el.textContent = reason ? `❌ Denied (${reason})` : "❌ Denied";
         el.className = "fail";
+        results[sensor] = "Denied";
+      }
+      checkCompletion();
+    }
+
+    function checkCompletion() {
+      if (Object.keys(results).length >= document.querySelectorAll("#sensorList li").length) {
+        document.getElementById("downloadBtn").style.display = "inline-block";
       }
     }
 
@@ -84,9 +101,6 @@
     }
 
     document.getElementById("downloadBtn").addEventListener("click", downloadReport);
-
-    // Trigger check on page load
-    window.onload = checkPermissions;
   </script>
 </body>
 </html>

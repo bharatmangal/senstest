@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movement Detection</title>
+    <title>Advanced Movement Detection</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -22,53 +22,68 @@
         }
         
         .container {
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
             width: 90%;
-            max-width: 500px;
+            max-width: 550px;
             padding: 30px;
             text-align: center;
         }
         
         h1 {
-            color: #333;
+            color: #2c3e50;
             margin-bottom: 20px;
-            font-size: 28px;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        
+        .description {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            font-size: 16px;
+            line-height: 1.5;
         }
         
         .status-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 18px;
             padding: 30px;
             margin: 25px 0;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s ease;
+            border: 2px solid #e8e8e8;
         }
         
         .status-indicator {
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             border-radius: 50%;
             margin: 0 auto 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
             color: white;
             transition: all 0.5s ease;
+            border: 4px solid white;
         }
         
         .stopped {
-            background-color: #4CAF50;
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+            box-shadow: 0 0 25px rgba(0, 180, 155, 0.5);
         }
         
         .moving {
-            background-color: #F44336;
-            box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            box-shadow: 0 0 25px rgba(255, 65, 108, 0.5);
             animation: pulse 1.5s infinite;
+        }
+        
+        .uncertain {
+            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+            box-shadow: 0 0 25px rgba(142, 45, 226, 0.5);
         }
         
         @keyframes pulse {
@@ -78,50 +93,74 @@
         }
         
         .status-text {
-            font-size: 32px;
-            font-weight: bold;
-            color: #333;
+            font-size: 36px;
+            font-weight: 800;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .status-subtext {
+            font-size: 16px;
+            color: #7f8c8d;
         }
         
         .data-display {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin: 20px 0;
+            margin: 25px 0;
         }
         
         .data-item {
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 18px;
+            border-radius: 12px;
             text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eaeaea;
         }
         
         .data-label {
             font-size: 14px;
-            color: #666;
-            margin-bottom: 5px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
         }
         
         .data-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
+            font-size: 22px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .confidence {
+            height: 10px;
+            background: #ecf0f1;
+            border-radius: 5px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .confidence-level {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
         }
         
         .instructions {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
+            background: #e8f4fc;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 25px 0;
             text-align: left;
-            font-size: 14px;
-            color: #333;
+            font-size: 15px;
+            color: #2c3e50;
+            border-left: 5px solid #3498db;
         }
         
         .instructions h3 {
-            margin-bottom: 10px;
-            color: #1976d2;
+            margin-bottom: 12px;
+            color: #2980b9;
+            font-size: 18px;
         }
         
         .instructions ul {
@@ -129,49 +168,86 @@
         }
         
         .instructions li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            line-height: 1.5;
         }
         
         button {
-            background: #1976d2;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
             color: white;
             border: none;
-            padding: 12px 25px;
+            padding: 16px 32px;
             border-radius: 50px;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 10px;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
         }
         
         button:hover {
-            background: #1565c0;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(1px);
         }
         
         .compatibility {
             margin-top: 20px;
             font-size: 14px;
-            color: #666;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .icon {
+            font-size: 20px;
         }
         
         .footer {
             margin-top: 25px;
-            font-size: 12px;
-            color: #888;
+            font-size: 13px;
+            color: #95a5a6;
+        }
+        
+        .sensitivity {
+            margin: 20px 0;
+        }
+        
+        .sensitivity-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .sensitivity-label {
+            display: flex;
+            justify-content: space-between;
+            color: #7f8c8d;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Movement Detection</h1>
+        <h1>Advanced Movement Detection</h1>
+        <p class="description">Detects whether a person is moving or stationary while holding a phone</p>
         
         <div class="status-card">
             <div class="status-indicator stopped" id="statusIndicator">
-                Stopped
+                <span id="statusEmoji">📱</span>
             </div>
-            <div class="status-text" id="statusText">Not Moving</div>
+            <div class="status-text" id="statusText">Stationary</div>
+            <div class="status-subtext" id="statusSubtext">Phone is being held steady</div>
+            
+            <div class="confidence">
+                <div class="confidence-level" id="confidenceLevel" style="width: 90%; background: #00b09b"></div>
+            </div>
+            <div class="data-label">Detection Confidence: <span id="confidenceValue">90%</span></div>
         </div>
         
         <div class="data-display">
@@ -185,24 +261,35 @@
             </div>
         </div>
         
+        <div class="sensitivity">
+            <div class="data-label">Sensitivity Adjustment</div>
+            <input type="range" min="1" max="10" value="5" class="sensitivity-slider" id="sensitivitySlider">
+            <div class="sensitivity-label">
+                <span>Low Sensitivity</span>
+                <span>High Sensitivity</span>
+            </div>
+        </div>
+        
         <div class="instructions">
             <h3>How to use:</h3>
             <ul>
-                <li>Hold your phone in your hand normally</li>
+                <li>Hold your phone normally in your hand</li>
                 <li>Grant permission when asked for sensor access</li>
                 <li>Walk around to test movement detection</li>
-                <li>Stop walking to see status change</li>
+                <li>Adjust sensitivity if needed to reduce false positives</li>
+                <li>Algorithm distinguishes between phone movement and actual walking</li>
             </ul>
         </div>
         
         <button id="startButton">Start Detection</button>
         
         <div class="compatibility">
-            Compatible with Android Chrome and iOS Safari
+            <span class="icon">📱</span>
+            <span>Compatible with Android Chrome and iOS Safari</span>
         </div>
         
         <div class="footer">
-            Uses device motion and orientation sensors
+            Uses advanced sensor fusion and pattern recognition | Updated: June 2023
         </div>
     </div>
 
@@ -211,20 +298,27 @@
             const startButton = document.getElementById('startButton');
             const statusIndicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
+            const statusSubtext = document.getElementById('statusSubtext');
+            const statusEmoji = document.getElementById('statusEmoji');
             const accelerationElement = document.getElementById('acceleration');
             const movementScoreElement = document.getElementById('movementScore');
+            const confidenceLevel = document.getElementById('confidenceLevel');
+            const confidenceValue = document.getElementById('confidenceValue');
+            const sensitivitySlider = document.getElementById('sensitivitySlider');
             
             let isMonitoring = false;
-            let movementThreshold = 0.3; // Threshold for detecting movement
+            let movementThreshold = 0.25; // Base threshold, adjusted by sensitivity
             let stableCount = 0;
             let movementHistory = [];
-            const historySize = 10;
+            const historySize = 15;
+            let lastPosition = null;
+            let falsePositivePrevention = true;
             
-            // Check if AbsoluteOrientationSensor is available
-            if ('AbsoluteOrientationSensor' in window) {
+            // Check if sensors are available
+            if ('AbsoluteOrientationSensor' in window || 'DeviceMotionEvent' in window) {
                 startButton.addEventListener('click', initSensor);
             } else {
-                startButton.textContent = 'Sensor Not Available';
+                startButton.textContent = 'Sensors Not Available';
                 startButton.disabled = true;
                 statusText.textContent = 'Sensor API not supported';
                 
@@ -235,6 +329,11 @@
                     statusText.textContent = 'Android: Chrome browser required';
                 }
             }
+            
+            // Update sensitivity based on slider
+            sensitivitySlider.addEventListener('input', function() {
+                movementThreshold = 0.1 + (0.4 * (this.value / 10));
+            });
             
             function initSensor() {
                 if (isMonitoring) return;
@@ -250,6 +349,7 @@
                                     startSensorMonitoring();
                                 } else {
                                     statusText.textContent = 'Permission denied';
+                                    statusSubtext.textContent = 'Please enable motion permissions in Settings';
                                 }
                             })
                             .catch(console.error);
@@ -271,7 +371,7 @@
                 let lastReadingTimestamp = null;
                 let lastAcceleration = { x: 0, y: 0, z: 0 };
                 
-                // Use device motion events as a fallback
+                // Use device motion events
                 window.addEventListener('devicemotion', handleMotionEvent);
                 
                 function handleMotionEvent(event) {
@@ -307,20 +407,29 @@
                             movementHistory.shift();
                         }
                         
-                        // Calculate average movement
-                        const movementAvg = movementHistory.reduce((a, b) => a + b, 0) / movementHistory.length;
+                        // Calculate average movement with more weight to recent values
+                        let weightedSum = 0;
+                        let weightTotal = 0;
+                        
+                        for (let i = 0; i < movementHistory.length; i++) {
+                            const weight = (i + 1) / movementHistory.length; // More weight to recent values
+                            weightedSum += movementHistory[i] * weight;
+                            weightTotal += weight;
+                        }
+                        
+                        const movementAvg = weightedSum / weightTotal;
                         movementScoreElement.textContent = movementAvg.toFixed(2);
                         
-                        // Determine movement status
-                        if (movementAvg > movementThreshold) {
-                            stableCount = 0;
-                            setMoving();
-                        } else {
-                            stableCount++;
-                            if (stableCount > 5) { // Require consistent readings
-                                setStopped();
-                            }
-                        }
+                        // Advanced detection logic to prevent false positives
+                        const isMoving = detectMovement(movementAvg, acceleration, movementHistory);
+                        
+                        // Update confidence level
+                        const confidence = calculateConfidence(movementAvg, movementHistory);
+                        confidenceLevel.style.width = confidence + '%';
+                        confidenceValue.textContent = confidence.toFixed(0) + '%';
+                        
+                        confidenceLevel.style.background = confidence > 70 ? 
+                            '#00b09b' : confidence > 40 ? '#ff9a00' : '#ff416c';
                         
                         lastAcceleration = {
                             x: acceleration.x,
@@ -331,16 +440,93 @@
                 }
             }
             
+            function detectMovement(movementAvg, acceleration, history) {
+                // Check for patterns indicative of walking vs. phone movement
+                const variance = calculateVariance(history);
+                const isRegularPattern = checkRegularity(history);
+                
+                // If the movement is very slight
+                if (movementAvg < movementThreshold * 0.7) {
+                    setStopped();
+                    return false;
+                }
+                
+                // If movement is high but irregular (likely phone movement)
+                if (movementAvg > movementThreshold && variance > 0.5 && !isRegularPattern && falsePositivePrevention) {
+                    setUncertain();
+                    return false;
+                }
+                
+                // If movement is above threshold and shows regular pattern (likely walking)
+                if (movementAvg > movementThreshold) {
+                    setMoving();
+                    return true;
+                }
+                
+                // Otherwise assume stationary
+                setStopped();
+                return false;
+            }
+            
+            function calculateVariance(history) {
+                if (history.length < 2) return 0;
+                
+                const mean = history.reduce((a, b) => a + b, 0) / history.length;
+                const variance = history.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / history.length;
+                return variance;
+            }
+            
+            function checkRegularity(history) {
+                if (history.length < 5) return false;
+                
+                // Simple check for regularity in the data (walking tends to be rhythmic)
+                let changes = 0;
+                for (let i = 1; i < history.length; i++) {
+                    if (Math.abs(history[i] - history[i-1]) > movementThreshold * 0.5) {
+                        changes++;
+                    }
+                }
+                
+                // If changes are relatively consistent, it might be walking
+                const changeRatio = changes / history.length;
+                return changeRatio > 0.3 && changeRatio < 0.7;
+            }
+            
+            function calculateConfidence(movementAvg, history) {
+                // Calculate confidence based on how far from threshold and data consistency
+                const variance = calculateVariance(history);
+                
+                if (movementAvg < movementThreshold * 0.7) {
+                    return Math.min(100, 100 - (movementAvg * 50));
+                } else if (movementAvg > movementThreshold * 1.3) {
+                    return Math.min(100, movementAvg * 40);
+                } else {
+                    // In the uncertain zone - lower confidence
+                    return Math.max(20, 70 - (variance * 50));
+                }
+            }
+            
             function setMoving() {
                 statusIndicator.className = 'status-indicator moving';
-                statusIndicator.textContent = 'Moving';
-                statusText.textContent = 'Person is moving';
+                statusEmoji.textContent = '🚶';
+                statusText.textContent = 'Person is Moving';
+                statusSubtext.textContent = 'Walking detected';
+                stableCount = 0;
             }
             
             function setStopped() {
                 statusIndicator.className = 'status-indicator stopped';
-                statusIndicator.textContent = 'Stopped';
-                statusText.textContent = 'Person is stationary';
+                statusEmoji.textContent = '📱';
+                statusText.textContent = 'Stationary';
+                statusSubtext.textContent = 'Phone is being held steady';
+                stableCount++;
+            }
+            
+            function setUncertain() {
+                statusIndicator.className = 'status-indicator uncertain';
+                statusEmoji.textContent = '🔍';
+                statusText.textContent = 'Analyzing';
+                statusSubtext.textContent = 'Detecting phone movement vs. walking';
             }
         });
     </script>

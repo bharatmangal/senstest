@@ -72,7 +72,7 @@
       }
 
       // If no movement for 2000ms, consider stopped
-      if (moving && Date.now() - lastMoveTime > 500) {
+      if (moving && Date.now() - lastMoveTime > 300) {
         moving = false;
         updateStatus(false);
       }
@@ -84,4 +84,5 @@
   </script>
 </body>
 </html>
+
 

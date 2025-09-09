@@ -3,104 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Safari Sensor Permission Test</title>
+  <title>Motion Detection</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
+    body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
     h1 { font-size: 1.5rem; }
-    ul { list-style: none; padding: 0; }
-    li { margin: 10px 0; font-size: 1.1rem; }
-    .success { color: green; }
-    .fail { color: red; }
-    .pending { color: orange; }
-    button { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; }
-    #downloadBtn { margin-top: 20px; padding: 10px 20px; font-size: 1rem; display: none; }
+    #status { font-size: 1.3rem; margin-top: 20px; padding: 10px; border: 2px solid #333; display: inline-block; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; }
+    .moving { color: green; }
+    .stopped { color: red; }
   </style>
 </head>
 <body>
-  <h1>Sensor Permission Status (Safari Test)</h1>
-  <ul id="sensorList">
-    <li id="accelerometer">Accelerometer: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('accelerometer')">Request</button></li>
-    <li id="gyroscope">Gyroscope: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('gyroscope')">Request</button></li>
-    <li id="magnetometer">Magnetometer: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('magnetometer')">Request</button></li>
-    <li id="ambientLight">Ambient Light: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('ambientLight')">Request</button></li>
-    <li id="absoluteOrientation">Absolute Orientation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('absoluteOrientation')">Request</button></li>
-    <li id="relativeOrientation">Relative Orientation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('relativeOrientation')">Request</button></li>
-    <li id="proximity">Proximity: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('proximity')">Request</button></li>
-    <li id="geolocation">Geolocation: <span class="pending">⏳ Awaiting...</span> <button onclick="requestSensor('geolocation')">Request</button></li>
-  </ul>
-  <button id="downloadBtn">Download Report</button>
+  <h1>Phone Motion Detection</h1>
+  <p>Press the button to allow motion/orientation permissions and start detection.</p>
+  <button id="startBtn">Start Detection</button>
+  <div id="status">Waiting for input...</div>
 
   <script>
-    const results = {};
+    const statusEl = document.getElementById("status");
 
-    async function requestSensor(sensor) {
-      try {
-        if (sensor === "geolocation") {
-          navigator.geolocation.getCurrentPosition(
-            () => updateUI(sensor, true),
-            () => updateUI(sensor, false)
-          );
-          return;
-        }
-
-        let SensorClass;
-        switch(sensor) {
-          case "accelerometer": SensorClass = window.Accelerometer; break;
-          case "gyroscope": SensorClass = window.Gyroscope; break;
-          case "magnetometer": SensorClass = window.Magnetometer; break;
-          case "ambientLight": SensorClass = window.AmbientLightSensor; break;
-          case "absoluteOrientation": SensorClass = window.AbsoluteOrientationSensor; break;
-          case "relativeOrientation": SensorClass = window.RelativeOrientationSensor; break;
-          case "proximity": SensorClass = window.ProximitySensor; break;
-        }
-
-        if (!SensorClass) {
-          updateUI(sensor, false, "Not supported");
-          return;
-        }
-
-        const sensorObj = new SensorClass({frequency: 1});
-        sensorObj.addEventListener("activate", () => updateUI(sensor, true));
-        sensorObj.addEventListener("error", () => updateUI(sensor, false));
-        sensorObj.start();
-      } catch (err) {
-        updateUI(sensor, false);
-      }
-    }
-
-    function updateUI(sensor, granted, reason = null) {
-      const el = document.getElementById(sensor).querySelector("span");
-      if (granted) {
-        el.textContent = "✔️ Granted";
-        el.className = "success";
-        results[sensor] = "Granted";
+    function updateStatus(isMoving) {
+      if (isMoving) {
+        statusEl.textContent = "🚶 Phone is Moving";
+        statusEl.className = "moving";
       } else {
-        el.textContent = reason ? `❌ Denied (${reason})` : "❌ Denied";
-        el.className = "fail";
-        results[sensor] = "Denied";
-      }
-      checkCompletion();
-    }
-
-    function checkCompletion() {
-      if (Object.keys(results).length >= document.querySelectorAll("#sensorList li").length) {
-        document.getElementById("downloadBtn").style.display = "inline-block";
+        statusEl.textContent = "🛑 Phone is Stopped";
+        statusEl.className = "stopped";
       }
     }
 
-    function downloadReport() {
-      let csvContent = "Sensor,Status\n";
-      for (let key in results) {
-        csvContent += `${key},${results[key]}\n`;
+    function startDetection() {
+      // iOS Safari requires explicit permission
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(response => {
+          if (response === 'granted') {
+            window.addEventListener('devicemotion', motionHandler);
+          } else {
+            alert('Permission denied for motion sensors');
+          }
+        });
+      } else {
+        // Android Chrome or other browsers
+        window.addEventListener('devicemotion', motionHandler);
       }
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "sensor_report.csv";
-      link.click();
     }
 
-    document.getElementById("downloadBtn").addEventListener("click", downloadReport);
+    let lastAcceleration = { x: 0, y: 0, z: 0 };
+    let moving = false;
+
+    function motionHandler(event) {
+      if (!event.accelerationIncludingGravity) return;
+
+      const acc = event.accelerationIncludingGravity;
+      const dx = acc.x - lastAcceleration.x;
+      const dy = acc.y - lastAcceleration.y;
+      const dz = acc.z - lastAcceleration.z;
+
+      const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+      // Threshold to detect movement (tune if needed)
+      if (delta > 1.0) {
+        moving = true;
+      } else {
+        moving = false;
+      }
+
+      updateStatus(moving);
+      lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
+    }
+
+    document.getElementById("startBtn").addEventListener("click", startDetection);
   </script>
 </body>
 </html>

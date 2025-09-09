@@ -13,6 +13,9 @@
     .stopped { color: red; }
     .controls { margin-top: 20px; }
     .controls label { display: block; margin: 10px 0 5px; }
+    #sensorData { margin-top: 20px; text-align: left; display: inline-block; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #333; padding: 5px; text-align: center; }
   </style>
 </head>
 <body>
@@ -26,7 +29,24 @@
     <input type="range" id="threshold" min="0.1" max="5.0" step="0.1" value="1.0">
 
     <label for="bufferSize">Buffer Size (Readings: <span id="bufferValue">5</span>)</label>
-    <input type="range" id="bufferSize" min="1" max="200" step="1" value="5">
+    <input type="range" id="bufferSize" min="1" max="20" step="1" value="5">
+  </div>
+
+  <div id="sensorData">
+    <h3>Sensor Readings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>X</th>
+          <th>Y</th>
+          <th>Z</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="dataTable"></tbody>
+    </table>
+    <button id="downloadBtn">Download Data</button>
   </div>
 
   <script>
@@ -35,9 +55,11 @@
     const bufferSlider = document.getElementById("bufferSize");
     const thresholdValueEl = document.getElementById("thresholdValue");
     const bufferValueEl = document.getElementById("bufferValue");
+    const dataTable = document.getElementById("dataTable");
 
     let threshold = parseFloat(thresholdSlider.value);
     let bufferSize = parseInt(bufferSlider.value);
+    let motionData = [];
 
     thresholdSlider.addEventListener("input", () => {
       threshold = parseFloat(thresholdSlider.value);
@@ -100,22 +122,42 @@
           updateStatus(true);
         }
       } else {
-        if (isMoving && Date.now() - lastMoveTime > 150) {
+        if (isMoving && Date.now() - lastMoveTime > 2000) {
           isMoving = false;
           updateStatus(false);
         }
       }
 
       lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
+
+      const row = `<tr><td>${new Date().toLocaleTimeString()}</td><td>${acc.x.toFixed(2)}</td><td>${acc.y.toFixed(2)}</td><td>${acc.z.toFixed(2)}</td><td>${isMoving ? 'Moving' : 'Stopped'}</td></tr>`;
+      dataTable.insertAdjacentHTML('afterbegin', row);
+
+      motionData.push({
+        timestamp: new Date().toISOString(),
+        x: acc.x,
+        y: acc.y,
+        z: acc.z,
+        status: isMoving ? 'Moving' : 'Stopped'
+      });
     }
 
     document.getElementById("startBtn").addEventListener("click", startDetection);
+
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+      let csvContent = "data:text/csv;charset=utf-8,Timestamp,X,Y,Z,Status\n";
+      motionData.forEach(row => {
+        csvContent += `${row.timestamp},${row.x},${row.y},${row.z},${row.status}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "motion_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   </script>
 </body>
 </html>
-
-
-
-
-
-

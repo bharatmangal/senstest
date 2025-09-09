@@ -75,6 +75,8 @@
 
     let lastAcceleration = { x: 0, y: 0, z: 0 };
     let deltas = [];
+    let lastMoveTime = 0;
+    let isMoving = false;
 
     function motionHandler(event) {
       if (!event.accelerationIncludingGravity) return;
@@ -91,7 +93,19 @@
 
       const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
 
-      updateStatus(avgDelta > threshold);
+      if (avgDelta > threshold) {
+        lastMoveTime = Date.now();
+        if (!isMoving) {
+          isMoving = true;
+          updateStatus(true);
+        }
+      } else {
+        if (isMoving && Date.now() - lastMoveTime > 1000) {
+          isMoving = false;
+          updateStatus(false);
+        }
+      }
+
       lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
     }
 

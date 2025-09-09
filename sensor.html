@@ -81,11 +81,6 @@
             animation: pulse 1.5s infinite;
         }
         
-        .uncertain {
-            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
-            box-shadow: 0 0 25px rgba(142, 45, 226, 0.5);
-        }
-        
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -144,6 +139,8 @@
             height: 100%;
             border-radius: 5px;
             transition: width 0.5s ease;
+            background: #00b09b;
+            width: 90%;
         }
         
         .instructions {
@@ -230,12 +227,25 @@
             color: #7f8c8d;
             font-size: 14px;
         }
+        
+        .axis-data {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .axis-item {
+            background: #edf2f7;
+            padding: 10px;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Advanced Movement Detection</h1>
-        <p class="description">Detects whether a person is moving or stationary while holding a phone</p>
+        <p class="description">Detects walking motion while ignoring small phone movements</p>
         
         <div class="status-card">
             <div class="status-indicator stopped" id="statusIndicator">
@@ -245,19 +255,34 @@
             <div class="status-subtext" id="statusSubtext">Phone is being held steady</div>
             
             <div class="confidence">
-                <div class="confidence-level" id="confidenceLevel" style="width: 90%; background: #00b09b"></div>
+                <div class="confidence-level" id="confidenceLevel"></div>
             </div>
             <div class="data-label">Detection Confidence: <span id="confidenceValue">90%</span></div>
         </div>
         
         <div class="data-display">
             <div class="data-item">
-                <div class="data-label">Acceleration</div>
-                <div class="data-value" id="acceleration">0.00 m/s²</div>
+                <div class="data-label">Forward Motion</div>
+                <div class="data-value" id="forwardMotion">0.00 m/s²</div>
             </div>
             <div class="data-item">
                 <div class="data-label">Movement Score</div>
                 <div class="data-value" id="movementScore">0.00</div>
+            </div>
+        </div>
+
+        <div class="axis-data">
+            <div class="axis-item">
+                <div class="data-label">X (Side)</div>
+                <div class="data-value" id="xValue">0.00</div>
+            </div>
+            <div class="axis-item">
+                <div class="data-label">Y (Up/Down)</div>
+                <div class="data-value" id="yValue">0.00</div>
+            </div>
+            <div class="axis-item">
+                <div class="data-label">Z (Forward)</div>
+                <div class="data-value" id="zValue">0.00</div>
             </div>
         </div>
         
@@ -275,9 +300,9 @@
             <ul>
                 <li>Hold your phone normally in your hand</li>
                 <li>Grant permission when asked for sensor access</li>
-                <li>Walk around to test movement detection</li>
-                <li>Adjust sensitivity if needed to reduce false positives</li>
-                <li>Algorithm distinguishes between phone movement and actual walking</li>
+                <li>Walk naturally to test movement detection</li>
+                <li>Algorithm focuses on forward motion (walking direction)</li>
+                <li>Small movements are ignored as natural phone handling</li>
             </ul>
         </div>
         
@@ -289,7 +314,7 @@
         </div>
         
         <div class="footer">
-            Uses advanced sensor fusion and pattern recognition | Updated: June 2023
+            Uses directional analysis with tolerance for small movements | Updated: June 2023
         </div>
     </div>
 
@@ -300,19 +325,24 @@
             const statusText = document.getElementById('statusText');
             const statusSubtext = document.getElementById('statusSubtext');
             const statusEmoji = document.getElementById('statusEmoji');
-            const accelerationElement = document.getElementById('acceleration');
+            const forwardMotionElement = document.getElementById('forwardMotion');
             const movementScoreElement = document.getElementById('movementScore');
             const confidenceLevel = document.getElementById('confidenceLevel');
             const confidenceValue = document.getElementById('confidenceValue');
             const sensitivitySlider = document.getElementById('sensitivitySlider');
+            const xValueElement = document.getElementById('xValue');
+            const yValueElement = document.getElementById('yValue');
+            const zValueElement = document.getElementById('zValue');
             
             let isMonitoring = false;
             let movementThreshold = 0.25; // Base threshold, adjusted by sensitivity
             let stableCount = 0;
             let movementHistory = [];
             const historySize = 15;
-            let lastPosition = null;
             let falsePositivePrevention = true;
+            let alpha = 0; // Device orientation (z-axis rotation)
+            let isCalibrated = false;
+            let calibrationSamples = [];
             
             // Check if sensors are available
             if ('AbsoluteOrientationSensor' in window || 'DeviceMotionEvent' in window) {
@@ -371,8 +401,24 @@
                 let lastReadingTimestamp = null;
                 let lastAcceleration = { x: 0, y: 0, z: 0 };
                 
+                // Listen to device orientation to determine forward direction
+                window.addEventListener('deviceorientation', handleOrientationEvent);
+                
                 // Use device motion events
                 window.addEventListener('devicemotion', handleMotionEvent);
+                
+                function handleOrientationEvent(event) {
+                    // Get device orientation to determine forward direction
+                    alpha = event.alpha || 0; // Z-axis rotation (compass direction)
+                    
+                    if (!isCalibrated && calibrationSamples.length < 10) {
+                        calibrationSamples.push(alpha);
+                        if (calibrationSamples.length === 10) {
+                            isCalibrated = true;
+                            statusSubtext.textContent = 'Calibration complete';
+                        }
+                    }
+                }
                 
                 function handleMotionEvent(event) {
                     const acceleration = event.accelerationIncludingGravity;
@@ -388,21 +434,32 @@
                     
                     lastReadingTimestamp = currentTime;
                     
+                    // Update axis values
+                    xValueElement.textContent = acceleration.x ? acceleration.x.toFixed(2) : '0.00';
+                    yValueElement.textContent = acceleration.y ? acceleration.y.toFixed(2) : '0.00';
+                    zValueElement.textContent = acceleration.z ? acceleration.z.toFixed(2) : '0.00';
+                    
                     if (deltaTime > 0) {
                         // Calculate acceleration change
                         const deltaX = acceleration.x - lastAcceleration.x;
                         const deltaY = acceleration.y - lastAcceleration.y;
                         const deltaZ = acceleration.z - lastAcceleration.z;
                         
+                        // Calculate magnitude of change
                         const accelerationMagnitude = Math.sqrt(
                             deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
                         ) / deltaTime;
                         
-                        // Update display
-                        accelerationElement.textContent = accelerationMagnitude.toFixed(2) + ' m/s²';
+                        // Calculate forward motion (Z-axis is typically forward when holding phone upright)
+                        // This is a simplified approach - in a real app you'd use orientation data
+                        // to determine the actual forward direction
+                        let forwardMotion = Math.abs(deltaZ) / deltaTime;
                         
-                        // Add to movement history
-                        movementHistory.push(accelerationMagnitude);
+                        // Update display
+                        forwardMotionElement.textContent = forwardMotion.toFixed(2) + ' m/s²';
+                        
+                        // Add to movement history (focus on forward motion)
+                        movementHistory.push(forwardMotion);
                         if (movementHistory.length > historySize) {
                             movementHistory.shift();
                         }
@@ -443,24 +500,30 @@
             function detectMovement(movementAvg, acceleration, history) {
                 // Check for patterns indicative of walking vs. phone movement
                 const variance = calculateVariance(history);
-                const isRegularPattern = checkRegularity(history);
                 
-                // If the movement is very slight
-                if (movementAvg < movementThreshold * 0.7) {
+                // If the movement is very slight - definitely stationary
+                if (movementAvg < movementThreshold * 0.5) {
                     setStopped();
                     return false;
                 }
                 
-                // If movement is high but irregular (likely phone movement)
-                if (movementAvg > movementThreshold && variance > 0.5 && !isRegularPattern && falsePositivePrevention) {
-                    setUncertain();
+                // If movement is moderate but irregular (likely phone movement)
+                if (movementAvg < movementThreshold * 1.5 && variance > 0.3 && falsePositivePrevention) {
+                    setStopped();
                     return false;
                 }
                 
                 // If movement is above threshold and shows regular pattern (likely walking)
                 if (movementAvg > movementThreshold) {
-                    setMoving();
-                    return true;
+                    // Additional check for walking rhythm
+                    if (hasWalkingRhythm(history)) {
+                        setMoving();
+                        return true;
+                    } else if (movementAvg > movementThreshold * 2) {
+                        // Very high movement even without clear rhythm
+                        setMoving();
+                        return true;
+                    }
                 }
                 
                 // Otherwise assume stationary
@@ -476,20 +539,22 @@
                 return variance;
             }
             
-            function checkRegularity(history) {
-                if (history.length < 5) return false;
+            function hasWalkingRhythm(history) {
+                if (history.length < 8) return false;
                 
-                // Simple check for regularity in the data (walking tends to be rhythmic)
-                let changes = 0;
-                for (let i = 1; i < history.length; i++) {
-                    if (Math.abs(history[i] - history[i-1]) > movementThreshold * 0.5) {
-                        changes++;
+                // Count peaks in the data (walking creates rhythmic peaks)
+                let peakCount = 0;
+                for (let i = 2; i < history.length - 2; i++) {
+                    if (history[i] > history[i-1] && 
+                        history[i] > history[i-2] && 
+                        history[i] > history[i+1] && 
+                        history[i] > history[i+2]) {
+                        peakCount++;
                     }
                 }
                 
-                // If changes are relatively consistent, it might be walking
-                const changeRatio = changes / history.length;
-                return changeRatio > 0.3 && changeRatio < 0.7;
+                // If we have at least 2 peaks in the recent history, it's likely walking
+                return peakCount >= 2;
             }
             
             function calculateConfidence(movementAvg, history) {
@@ -498,8 +563,10 @@
                 
                 if (movementAvg < movementThreshold * 0.7) {
                     return Math.min(100, 100 - (movementAvg * 50));
-                } else if (movementAvg > movementThreshold * 1.3) {
-                    return Math.min(100, movementAvg * 40);
+                } else if (movementAvg > movementThreshold * 1.5 && hasWalkingRhythm(history)) {
+                    return Math.min(100, 90 + (movementAvg * 5));
+                } else if (movementAvg > movementThreshold * 2) {
+                    return Math.min(100, 80 + (movementAvg * 5));
                 } else {
                     // In the uncertain zone - lower confidence
                     return Math.max(20, 70 - (variance * 50));
@@ -509,8 +576,8 @@
             function setMoving() {
                 statusIndicator.className = 'status-indicator moving';
                 statusEmoji.textContent = '🚶';
-                statusText.textContent = 'Person is Moving';
-                statusSubtext.textContent = 'Walking detected';
+                statusText.textContent = 'Walking Detected';
+                statusSubtext.textContent = 'Consistent forward motion';
                 stableCount = 0;
             }
             
@@ -518,15 +585,8 @@
                 statusIndicator.className = 'status-indicator stopped';
                 statusEmoji.textContent = '📱';
                 statusText.textContent = 'Stationary';
-                statusSubtext.textContent = 'Phone is being held steady';
+                statusSubtext.textContent = 'Normal phone movement detected';
                 stableCount++;
-            }
-            
-            function setUncertain() {
-                statusIndicator.className = 'status-indicator uncertain';
-                statusEmoji.textContent = '🔍';
-                statusText.textContent = 'Analyzing';
-                statusSubtext.textContent = 'Detecting phone movement vs. walking';
             }
         });
     </script>

@@ -11,6 +11,8 @@
     button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; }
     .moving { color: green; }
     .stopped { color: red; }
+    .controls { margin-top: 20px; }
+    .controls label { display: block; margin: 10px 0 5px; }
   </style>
 </head>
 <body>
@@ -19,8 +21,33 @@
   <button id="startBtn">Start Detection</button>
   <div id="status">Waiting for input...</div>
 
+  <div class="controls">
+    <label for="threshold">Motion Sensitivity (Threshold: <span id="thresholdValue">1.0</span>)</label>
+    <input type="range" id="threshold" min="0.1" max="5.0" step="0.1" value="1.0">
+
+    <label for="bufferSize">Buffer Size (Readings: <span id="bufferValue">5</span>)</label>
+    <input type="range" id="bufferSize" min="1" max="20" step="1" value="5">
+  </div>
+
   <script>
     const statusEl = document.getElementById("status");
+    const thresholdSlider = document.getElementById("threshold");
+    const bufferSlider = document.getElementById("bufferSize");
+    const thresholdValueEl = document.getElementById("thresholdValue");
+    const bufferValueEl = document.getElementById("bufferValue");
+
+    let threshold = parseFloat(thresholdSlider.value);
+    let bufferSize = parseInt(bufferSlider.value);
+
+    thresholdSlider.addEventListener("input", () => {
+      threshold = parseFloat(thresholdSlider.value);
+      thresholdValueEl.textContent = threshold.toFixed(1);
+    });
+
+    bufferSlider.addEventListener("input", () => {
+      bufferSize = parseInt(bufferSlider.value);
+      bufferValueEl.textContent = bufferSize;
+    });
 
     function updateStatus(isMoving) {
       if (isMoving) {
@@ -33,7 +60,6 @@
     }
 
     function startDetection() {
-      // iOS Safari requires explicit permission
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission().then(response => {
           if (response === 'granted') {
@@ -43,14 +69,12 @@
           }
         });
       } else {
-        // Android Chrome or other browsers
         window.addEventListener('devicemotion', motionHandler);
       }
     }
 
     let lastAcceleration = { x: 0, y: 0, z: 0 };
-    let moving = false;
-    let lastMoveTime = Date.now();
+    let deltas = [];
 
     function motionHandler(event) {
       if (!event.accelerationIncludingGravity) return;
@@ -62,21 +86,12 @@
 
       const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-      // Detect movement if threshold exceeded
-      if (delta > 1.0) {
-        lastMoveTime = Date.now();
-        if (!moving) {
-          moving = true;
-          updateStatus(true);
-        }
-      }
+      deltas.push(delta);
+      if (deltas.length > bufferSize) deltas.shift();
 
-      // If no movement for 2000ms, consider stopped
-      if (moving && Date.now() - lastMoveTime > 300) {
-        moving = false;
-        updateStatus(false);
-      }
+      const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
 
+      updateStatus(avgDelta > threshold);
       lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
     }
 
@@ -84,5 +99,3 @@
   </script>
 </body>
 </html>
-
-

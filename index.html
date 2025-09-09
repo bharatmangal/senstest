@@ -117,15 +117,19 @@
     let lastMoveTime = 0;
     let isMoving = false;
 
+    function isIgnored(axis) {
+      return axisFilter.includes(axis);
+    }
+
     function motionHandler(event) {
       if (!event.accelerationIncludingGravity) return;
 
       const acc = event.accelerationIncludingGravity;
 
-      // Apply axis filter
-      let dx = (axisFilter.includes('x')) ? 0 : acc.x - lastAcceleration.x;
-      let dy = (axisFilter.includes('y')) ? 0 : acc.y - lastAcceleration.y;
-      let dz = (axisFilter.includes('z')) ? 0 : acc.z - lastAcceleration.z;
+      // Apply axis filter to calculation
+      let dx = isIgnored('x') ? 0 : acc.x - lastAcceleration.x;
+      let dy = isIgnored('y') ? 0 : acc.y - lastAcceleration.y;
+      let dz = isIgnored('z') ? 0 : acc.z - lastAcceleration.z;
 
       const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
@@ -149,14 +153,19 @@
 
       lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
 
-      const row = `<tr><td>${new Date().toLocaleTimeString()}</td><td>${acc.x.toFixed(2)}</td><td>${acc.y.toFixed(2)}</td><td>${acc.z.toFixed(2)}</td><td>${isMoving ? 'Moving' : 'Stopped'}</td></tr>`;
+      // Display readings (ignored axes = "--")
+      const dispX = isIgnored('x') ? "--" : acc.x.toFixed(2);
+      const dispY = isIgnored('y') ? "--" : acc.y.toFixed(2);
+      const dispZ = isIgnored('z') ? "--" : acc.z.toFixed(2);
+
+      const row = `<tr><td>${new Date().toLocaleTimeString()}</td><td>${dispX}</td><td>${dispY}</td><td>${dispZ}</td><td>${isMoving ? 'Moving' : 'Stopped'}</td></tr>`;
       dataTable.insertAdjacentHTML('afterbegin', row);
 
       motionData.push({
         timestamp: new Date().toISOString(),
-        x: acc.x,
-        y: acc.y,
-        z: acc.z,
+        x: dispX,
+        y: dispY,
+        z: dispZ,
         status: isMoving ? 'Moving' : 'Stopped'
       });
     }
@@ -164,9 +173,9 @@
     document.getElementById("startBtn").addEventListener("click", startDetection);
 
     document.getElementById("downloadBtn").addEventListener("click", () => {
-      let csvContent = "data:text/csv;charset=utf-8,Timestamp,X,Y,Z,Status\\n";
+      let csvContent = "data:text/csv;charset=utf-8,Timestamp,X,Y,Z,Status\n";
       motionData.forEach(row => {
-        csvContent += `${row.timestamp},${row.x},${row.y},${row.z},${row.status}\\n`;
+        csvContent += `${row.timestamp},${row.x},${row.y},${row.z},${row.status}\n`;
       });
 
       const encodedUri = encodeURI(csvContent);

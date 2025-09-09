@@ -1,677 +1,358 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Movement Detection</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-            width: 90%;
-            max-width: 550px;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            font-size: 32px;
-            font-weight: 700;
-        }
-        
-        .description {
-            color: #7f8c8d;
-            margin-bottom: 25px;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        
-        .status-card {
-            background: white;
-            border-radius: 18px;
-            padding: 30px;
-            margin: 25px 0;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.4s ease;
-            border: 2px solid #e8e8e8;
-        }
-        
-        .status-indicator {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            transition: all 0.5s ease;
-            border: 4px solid white;
-        }
-        
-        .stopped {
-            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-            box-shadow: 0 0 25px rgba(0, 180, 155, 0.5);
-        }
-        
-        .moving {
-            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-            box-shadow: 0 0 25px rgba(255, 65, 108, 0.5);
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .status-text {
-            font-size: 36px;
-            font-weight: 800;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        .status-subtext {
-            font-size: 16px;
-            color: #7f8c8d;
-        }
-        
-        .data-display {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin: 25px 0;
-        }
-        
-        .data-item {
-            background: #f8f9fa;
-            padding: 18px;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-            border: 1px solid #eaeaea;
-        }
-        
-        .data-label {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 8px;
-        }
-        
-        .data-value {
-            font-size: 22px;
-            font-weight: 700;
-            color: #2c3e50;
-        }
-        
-        .confidence {
-            height: 10px;
-            background: #ecf0f1;
-            border-radius: 5px;
-            margin: 15px 0;
-            overflow: hidden;
-        }
-        
-        .confidence-level {
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.5s ease;
-            background: #00b09b;
-            width: 90%;
-        }
-        
-        .instructions {
-            background: #e8f4fc;
-            padding: 20px;
-            border-radius: 12px;
-            margin: 25px 0;
-            text-align: left;
-            font-size: 15px;
-            color: #2c3e50;
-            border-left: 5px solid #3498db;
-        }
-        
-        .instructions h3 {
-            margin-bottom: 12px;
-            color: #2980b9;
-            font-size: 18px;
-        }
-        
-        .instructions ul {
-            padding-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 50px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 15px 0;
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-        }
-        
-        button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.5);
-        }
-        
-        button:active {
-            transform: translateY(1px);
-        }
-        
-        .compatibility {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #7f8c8d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        
-        .icon {
-            font-size: 20px;
-        }
-        
-        .footer {
-            margin-top: 25px;
-            font-size: 13px;
-            color: #95a5a6;
-        }
-        
-        .sensitivity {
-            margin: 20px 0;
-        }
-        
-        .sensitivity-slider {
-            width: 100%;
-            margin: 10px 0;
-        }
-        
-        .sensitivity-label {
-            display: flex;
-            justify-content: space-between;
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        
-        .axis-data {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .axis-item {
-            background: #edf2f7;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        
-        .calibration-status {
-            margin: 10px 0;
-            padding: 10px;
-            background: #fff3cd;
-            border-radius: 8px;
-            color: #856404;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Motion Detection</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      margin: 20px; 
+      text-align: center; 
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    h1 { 
+      font-size: 1.8rem; 
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+    p {
+      color: #7f8c8d;
+      margin-bottom: 20px;
+    }
+    #status { 
+      font-size: 1.4rem; 
+      margin: 25px 0;
+      padding: 15px 25px;
+      border-radius: 8px;
+      display: inline-block;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    button { 
+      margin-top: 15px; 
+      padding: 12px 25px; 
+      font-size: 1.1rem; 
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    .moving { 
+      background-color: rgba(46, 204, 113, 0.2);
+      color: #27ae60;
+      border: 2px solid #2ecc71;
+    }
+    .stopped { 
+      background-color: rgba(231, 76, 60, 0.2);
+      color: #c0392b;
+      border: 2px solid #e74c3c;
+    }
+    .calibrating {
+      background-color: rgba(241, 196, 15, 0.2);
+      color: #d35400;
+      border: 2px solid #f39c12;
+    }
+    .controls { 
+      margin-top: 30px; 
+      text-align: left;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+    .controls label { 
+      display: block; 
+      margin: 15px 0 8px; 
+      font-weight: 500;
+    }
+    input[type="range"] {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+    .value-display {
+      font-weight: bold;
+      color: #3498db;
+    }
+    .stats {
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+    .confidence {
+      margin-top: 10px;
+      height: 10px;
+      background: #ecf0f1;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    .confidence-level {
+      height: 100%;
+      background: #3498db;
+      width: 0%;
+      transition: width 0.5s;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Advanced Movement Detection</h1>
-        <p class="description">Detects walking motion while ignoring small phone movements</p>
-        
-        <div class="status-card">
-            <div class="status-indicator stopped" id="statusIndicator">
-                <span id="statusEmoji">📱</span>
-            </div>
-            <div class="status-text" id="statusText">Stationary</div>
-            <div class="status-subtext" id="statusSubtext">Phone is being held steady</div>
-            
-            <div class="calibration-status" id="calibrationStatus">
-                Calibration in progress... Please keep the phone still for 5 seconds.
-            </div>
-            
-            <div class="confidence">
-                <div class="confidence-level" id="confidenceLevel"></div>
-            </div>
-            <div class="data-label">Detection Confidence: <span id="confidenceValue">90%</span></div>
-        </div>
-        
-        <div class="data-display">
-            <div class="data-item">
-                <div class="data-label">Forward Motion</div>
-                <div class="data-value" id="forwardMotion">0.00 m/s²</div>
-            </div>
-            <div class="data-item">
-                <div class="data-label">Movement Score</div>
-                <div class="data-value" id="movementScore">0.00</div>
-            </div>
-        </div>
+  <div class="container">
+    <h1>Advanced Motion Detection</h1>
+    <p>Press the button to allow motion/orientation permissions and start detection.</p>
+    <button id="startBtn">Start Detection</button>
+    <div id="status">Waiting for input...</div>
 
-        <div class="axis-data">
-            <div class="axis-item">
-                <div class="data-label">X (Side)</div>
-                <div class="data-value" id="xValue">0.00</div>
-            </div>
-            <div class="axis-item">
-                <div class="data-label">Y (Up/Down)</div>
-                <div class="data-value" id="yValue">0.00</div>
-            </div>
-            <div class="axis-item">
-                <div class="data-label">Z (Forward)</div>
-                <div class="data-value" id="zValue">0.00</div>
-            </div>
-        </div>
-        
-        <div class="sensitivity">
-            <div class="data-label">Sensitivity Adjustment</div>
-            <input type="range" min="1" max="10" value="5" class="sensitivity-slider" id="sensitivitySlider">
-            <div class="sensitivity-label">
-                <span>Low Sensitivity</span>
-                <span>High Sensitivity</span>
-            </div>
-        </div>
-        
-        <div class="instructions">
-            <h3>How to use:</h3>
-            <ul>
-                <li>Hold your phone normally in your hand</li>
-                <li>Grant permission when asked for sensor access</li>
-                <li>Walk naturally to test movement detection</li>
-                <li>Algorithm focuses on forward motion (walking direction)</li>
-                <li>Small movements are ignored as natural phone handling</li>
-            </ul>
-        </div>
-        
-        <button id="startButton">Start Detection</button>
-        
-        <div class="compatibility">
-            <span class="icon">📱</span>
-            <span>Compatible with Android Chrome and iOS Safari</span>
-        </div>
-        
-        <div class="footer">
-            Uses directional analysis with tolerance for small movements | Updated: June 2023
-        </div>
+    <div class="confidence">
+      <div id="confidenceLevel" class="confidence-level"></div>
+    </div>
+    <div id="confidenceValue" class="stats">Confidence: 0%</div>
+
+    <div class="controls">
+      <label for="threshold">Motion Sensitivity (Threshold: <span id="thresholdValue" class="value-display">0.15</span>)</label>
+      <input type="range" id="threshold" min="0.05" max="0.5" step="0.01" value="0.15">
+
+      <label for="bufferSize">Buffer Size (Readings: <span id="bufferValue" class="value-display">10</span>)</label>
+      <input type="range" id="bufferSize" min="5" max="30" step="1" value="10">
+
+      <label for="stabilityThreshold">Stability Threshold (<span id="stabilityValue" class="value-display">0.08</span>)</label>
+      <input type="range" id="stabilityThreshold" min="0.02" max="0.2" step="0.01" value="0.08">
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const startButton = document.getElementById('startButton');
-            const statusIndicator = document.getElementById('statusIndicator');
-            const statusText = document.getElementById('statusText');
-            const statusSubtext = document.getElementById('statusSubtext');
-            const statusEmoji = document.getElementById('statusEmoji');
-            const forwardMotionElement = document.getElementById('forwardMotion');
-            const movementScoreElement = document.getElementById('movementScore');
-            const confidenceLevel = document.getElementById('confidenceLevel');
-            const confidenceValue = document.getElementById('confidenceValue');
-            const sensitivitySlider = document.getElementById('sensitivitySlider');
-            const xValueElement = document.getElementById('xValue');
-            const yValueElement = document.getElementById('yValue');
-            const zValueElement = document.getElementById('zValue');
-            const calibrationStatus = document.getElementById('calibrationStatus');
-            
-            let isMonitoring = false;
-            let movementThreshold = 0.25; // Base threshold, adjusted by sensitivity
-            let stableCount = 0;
-            let movementHistory = [];
-            const historySize = 20; // Increased history size for better pattern detection
-            let falsePositivePrevention = true;
-            let alpha = 0; // Device orientation (z-axis rotation)
-            let isCalibrated = false;
-            let calibrationSamples = [];
-            let baselineNoiseLevel = 0.05; // Initial assumption, will be calibrated
-            let calibrationComplete = false;
-            
-            // Check if sensors are available
-            if ('AbsoluteOrientationSensor' in window || 'DeviceMotionEvent' in window) {
-                startButton.addEventListener('click', initSensor);
-            } else {
-                startButton.textContent = 'Sensors Not Available';
-                startButton.disabled = true;
-                statusText.textContent = 'Sensor API not supported';
-                
-                // Provide instructions based on platform
-                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    statusText.textContent = 'iOS: Ensure motion permissions are enabled';
-                } else if (/Android/i.test(navigator.userAgent)) {
-                    statusText.textContent = 'Android: Chrome browser required';
-                }
-            }
-            
-            // Update sensitivity based on slider
-            sensitivitySlider.addEventListener('input', function() {
-                movementThreshold = 0.1 + (0.4 * (this.value / 10));
-            });
-            
-            function initSensor() {
-                if (isMonitoring) return;
-                
-                try {
-                    // Request permission for device orientation (iOS)
-                    if (typeof DeviceOrientationEvent !== 'undefined' && 
-                        typeof DeviceOrientationEvent.requestPermission === 'function') {
-                        
-                        DeviceOrientationEvent.requestPermission()
-                            .then(permissionState => {
-                                if (permissionState === 'granted') {
-                                    startSensorMonitoring();
-                                } else {
-                                    statusText.textContent = 'Permission denied';
-                                    statusSubtext.textContent = 'Please enable motion permissions in Settings';
-                                }
-                            })
-                            .catch(console.error);
-                    } else {
-                        // For Android and other browsers
-                        startSensorMonitoring();
-                    }
-                } catch (error) {
-                    console.error('Error initializing sensor:', error);
-                    statusText.textContent = 'Error: ' + error.message;
-                }
-            }
-            
-            function startSensorMonitoring() {
-                isMonitoring = true;
-                startButton.textContent = 'Monitoring...';
-                startButton.disabled = true;
-                
-                let lastReadingTimestamp = null;
-                let lastAcceleration = { x: 0, y: 0, z: 0 };
-                let calibrationStartTime = null;
-                
-                // Listen to device orientation to determine forward direction
-                window.addEventListener('deviceorientation', handleOrientationEvent);
-                
-                // Use device motion events
-                window.addEventListener('devicemotion', handleMotionEvent);
-                
-                function handleOrientationEvent(event) {
-                    // Get device orientation to determine forward direction
-                    alpha = event.alpha || 0; // Z-axis rotation (compass direction)
-                    
-                    if (!isCalibrated && calibrationSamples.length < 10) {
-                        calibrationSamples.push(alpha);
-                        if (calibrationSamples.length === 10) {
-                            isCalibrated = true;
-                        }
-                    }
-                }
-                
-                function handleMotionEvent(event) {
-                    const acceleration = event.accelerationIncludingGravity;
-                    
-                    if (!acceleration) return;
-                    
-                    const currentTime = Date.now();
-                    let deltaTime = 0;
-                    
-                    if (lastReadingTimestamp) {
-                        deltaTime = (currentTime - lastReadingTimestamp) / 1000; // Convert to seconds
-                    }
-                    
-                    lastReadingTimestamp = currentTime;
-                    
-                    // Update axis values
-                    xValueElement.textContent = acceleration.x ? acceleration.x.toFixed(2) : '0.00';
-                    yValueElement.textContent = acceleration.y ? acceleration.y.toFixed(2) : '0.00';
-                    zValueElement.textContent = acceleration.z ? acceleration.z.toFixed(2) : '0.00';
-                    
-                    // Calibration phase - first 5 seconds
-                    if (!calibrationComplete) {
-                        if (!calibrationStartTime) {
-                            calibrationStartTime = currentTime;
-                        }
-                        
-                        const elapsedCalibrationTime = (currentTime - calibrationStartTime) / 1000;
-                        const remainingTime = Math.max(0, 5 - elapsedCalibrationTime);
-                        
-                        if (remainingTime > 0) {
-                            calibrationStatus.textContent = `Calibration in progress... Please keep the phone still for ${remainingTime.toFixed(1)} more seconds.`;
-                            
-                            // Collect calibration data to establish baseline noise
-                            const currentMagnitude = Math.sqrt(
-                                acceleration.x * acceleration.x + 
-                                acceleration.y * acceleration.y + 
-                                acceleration.z * acceleration.z
-                            );
-                            
-                            baselineNoiseLevel = Math.max(baselineNoiseLevel, currentMagnitude * 0.8);
-                            return; // Skip detection during calibration
-                        } else {
-                            calibrationComplete = true;
-                            calibrationStatus.textContent = "Calibration complete! You can now move normally.";
-                            setTimeout(() => {
-                                calibrationStatus.style.display = "none";
-                            }, 3000);
-                        }
-                    }
-                    
-                    if (deltaTime > 0) {
-                        // Calculate acceleration change
-                        const deltaX = acceleration.x - lastAcceleration.x;
-                        const deltaY = acceleration.y - lastAcceleration.y;
-                        const deltaZ = acceleration.z - lastAcceleration.z;
-                        
-                        // Calculate magnitude of change
-                        const accelerationMagnitude = Math.sqrt(
-                            deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
-                        ) / deltaTime;
-                        
-                        // Calculate forward motion (Z-axis is typically forward when holding phone upright)
-                        let forwardMotion = Math.abs(deltaZ) / deltaTime;
-                        
-                        // Filter out movements below the noise baseline
-                        forwardMotion = Math.max(0, forwardMotion - baselineNoiseLevel);
-                        
-                        // Update display
-                        forwardMotionElement.textContent = forwardMotion.toFixed(2) + ' m/s²';
-                        
-                        // Add to movement history (focus on forward motion)
-                        movementHistory.push(forwardMotion);
-                        if (movementHistory.length > historySize) {
-                            movementHistory.shift();
-                        }
-                        
-                        // Calculate average movement with more weight to recent values
-                        let weightedSum = 0;
-                        let weightTotal = 0;
-                        
-                        for (let i = 0; i < movementHistory.length; i++) {
-                            const weight = (i + 1) / movementHistory.length; // More weight to recent values
-                            weightedSum += movementHistory[i] * weight;
-                            weightTotal += weight;
-                        }
-                        
-                        const movementAvg = weightedSum / weightTotal;
-                        movementScoreElement.textContent = movementAvg.toFixed(2);
-                        
-                        // Advanced detection logic to prevent false positives
-                        const isMoving = detectMovement(movementAvg, acceleration, movementHistory);
-                        
-                        // Update confidence level
-                        const confidence = calculateConfidence(movementAvg, movementHistory);
-                        confidenceLevel.style.width = confidence + '%';
-                        confidenceValue.textContent = confidence.toFixed(0) + '%';
-                        
-                        confidenceLevel.style.background = confidence > 70 ? 
-                            '#00b09b' : confidence > 40 ? '#ff9a00' : '#ff416c';
-                        
-                        lastAcceleration = {
-                            x: acceleration.x,
-                            y: acceleration.y,
-                            z: acceleration.z
-                        };
-                    }
-                }
-            }
-            
-            function detectMovement(movementAvg, acceleration, history) {
-                // If we don't have enough data yet, assume stationary
-                if (history.length < 10) {
-                    setStopped();
-                    return false;
-                }
-                
-                // Check for patterns indicative of walking vs. phone movement
-                const variance = calculateVariance(history);
-                const stability = calculateStability(history);
-                
-                // If the movement is very slight - definitely stationary
-                if (movementAvg < movementThreshold * 0.5) {
-                    setStopped();
-                    return false;
-                }
-                
-                // If movement is moderate but irregular (likely phone movement)
-                if (movementAvg < movementThreshold * 1.5 && variance > 0.3 && falsePositivePrevention) {
-                    setStopped();
-                    return false;
-                }
-                
-                // Additional stability check to prevent false positives
-                if (stability < 0.6 && movementAvg < movementThreshold * 2) {
-                    setStopped();
-                    return false;
-                }
-                
-                // If movement is above threshold and shows regular pattern (likely walking)
-                if (movementAvg > movementThreshold) {
-                    // Additional check for walking rhythm with stricter requirements
-                    if (hasWalkingRhythm(history)) {
-                        setMoving();
-                        return true;
-                    } else if (movementAvg > movementThreshold * 2.5 && stability > 0.7) {
-                        // Very high movement with stability
-                        setMoving();
-                        return true;
-                    }
-                }
-                
-                // Otherwise assume stationary
-                setStopped();
-                return false;
-            }
-            
-            function calculateVariance(history) {
-                if (history.length < 2) return 0;
-                
-                const mean = history.reduce((a, b) => a + b, 0) / history.length;
-                const variance = history.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / history.length;
-                return variance;
-            }
-            
-            function calculateStability(history) {
-                if (history.length < 5) return 0;
-                
-                // Calculate how consistent the movements are (1 = very consistent, 0 = erratic)
-                let consistentCount = 0;
-                const avgMovement = history.reduce((a, b) => a + b, 0) / history.length;
-                
-                for (let i = 1; i < history.length; i++) {
-                    if (Math.abs(history[i] - history[i-1]) < avgMovement * 0.5) {
-                        consistentCount++;
-                    }
-                }
-                
-                return consistentCount / (history.length - 1);
-            }
-            
-            function hasWalkingRhythm(history) {
-                if (history.length < 10) return false;
-                
-                // Count peaks in the data (walking creates rhythmic peaks)
-                let peakCount = 0;
-                const avgMovement = history.reduce((a, b) => a + b, 0) / history.length;
-                
-                for (let i = 3; i < history.length - 3; i++) {
-                    if (history[i] > avgMovement * 1.2 && 
-                        history[i] > history[i-1] && 
-                        history[i] > history[i-2] && 
-                        history[i] > history[i+1] && 
-                        history[i] > history[i+2]) {
-                        peakCount++;
-                    }
-                }
-                
-                // Calculate peaks per second (assuming ~200ms between readings)
-                const peaksPerSecond = peakCount / (history.length * 0.2);
-                
-                // Walking typically has 1-2 steps per second (2-4 peaks per second)
-                return peaksPerSecond >= 1.5 && peaksPerSecond <= 4;
-            }
-            
-            function calculateConfidence(movementAvg, history) {
-                // Calculate confidence based on how far from threshold and data consistency
-                const variance = calculateVariance(history);
-                const stability = calculateStability(history);
-                
-                if (movementAvg < movementThreshold * 0.7) {
-                    return Math.min(100, 100 - (movementAvg * 50));
-                } else if (movementAvg > movementThreshold * 1.5 && hasWalkingRhythm(history)) {
-                    return Math.min(100, 90 + (movementAvg * 5) + (stability * 20));
-                } else if (movementAvg > movementThreshold * 2.5 && stability > 0.7) {
-                    return Math.min(100, 80 + (movementAvg * 5) + (stability * 15));
-                } else {
-                    // In the uncertain zone - lower confidence
-                    return Math.max(20, 70 - (variance * 50) + (stability * 10));
-                }
-            }
-            
-            function setMoving() {
-                statusIndicator.className = 'status-indicator moving';
-                statusEmoji.textContent = '🚶';
-                statusText.textContent = 'Walking Detected';
-                statusSubtext.textContent = 'Consistent forward motion';
-                stableCount = 0;
-            }
-            
-            function setStopped() {
-                statusIndicator.className = 'status-indicator stopped';
-                statusEmoji.textContent = '📱';
-                statusText.textContent = 'Stationary';
-                statusSubtext.textContent = 'Normal phone movement detected';
-                stableCount++;
-            }
+    <div id="stats" class="stats">
+      Current acceleration: 0.00 g<br>
+      Filtered value: 0.00 g<br>
+      Steps detected: 0
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const thresholdSlider = document.getElementById("threshold");
+    const bufferSlider = document.getElementById("bufferSize");
+    const stabilitySlider = document.getElementById("stabilityThreshold");
+    const thresholdValueEl = document.getElementById("thresholdValue");
+    const bufferValueEl = document.getElementById("bufferValue");
+    const stabilityValueEl = document.getElementById("stabilityValue");
+    const statsEl = document.getElementById("stats");
+    const confidenceLevelEl = document.getElementById("confidenceLevel");
+    const confidenceValueEl = document.getElementById("confidenceValue");
+
+    // Configuration with improved default values
+    let threshold = parseFloat(thresholdSlider.value);
+    let bufferSize = parseInt(bufferSlider.value);
+    let stabilityThreshold = parseFloat(stabilitySlider.value);
+    let isCalibrating = false;
+    let calibrationSamples = 0;
+    let baselineNoiseLevel = 0.05; // Will be calibrated
+
+    // Update slider value displays
+    thresholdSlider.addEventListener("input", () => {
+      threshold = parseFloat(thresholdSlider.value);
+      thresholdValueEl.textContent = threshold.toFixed(2);
+    });
+
+    bufferSlider.addEventListener("input", () => {
+      bufferSize = parseInt(bufferSlider.value);
+      bufferValueEl.textContent = bufferSize;
+    });
+
+    stabilitySlider.addEventListener("input", () => {
+      stabilityThreshold = parseFloat(stabilitySlider.value);
+      stabilityValueEl.textContent = stabilityThreshold.toFixed(2);
+    });
+
+    function updateStatus(state, confidence) {
+      if (state === "moving") {
+        statusEl.textContent = "🚶 Person is Moving";
+        statusEl.className = "moving";
+      } else if (state === "stopped") {
+        statusEl.textContent = "🛑 Person is Stopped";
+        statusEl.className = "stopped";
+      } else {
+        statusEl.textContent = "🔧 Calibrating... Hold still";
+        statusEl.className = "calibrating";
+      }
+      
+      // Update confidence indicator
+      const confidencePercent = Math.round(confidence * 100);
+      confidenceLevelEl.style.width = `${confidencePercent}%`;
+      confidenceValueEl.textContent = `Confidence: ${confidencePercent}%`;
+    }
+
+    function updateStats(currentAccel, filteredAccel, steps) {
+      statsEl.innerHTML = `
+        Current acceleration: ${currentAccel.toFixed(2)} g<br>
+        Filtered value: ${filteredAccel.toFixed(2)} g<br>
+        Steps detected: ${steps}
+      `;
+    }
+
+    function startDetection() {
+      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().then(response => {
+          if (response === 'granted') {
+            initMotionDetection();
+          } else {
+            alert('Permission denied for motion sensors');
+          }
         });
-    </script>
+      } else {
+        initMotionDetection();
+      }
+    }
+
+    // Motion detection variables
+    let lastAcceleration = { x: 0, y: 0, z: 0 };
+    let accelerationBuffer = [];
+    let stepCount = 0;
+    let lastStepTime = 0;
+    let movementState = "unknown";
+    let movementConfidence = 0;
+    let filteredAcceleration = 0;
+    
+    // For step detection
+    let stepHistory = [];
+    let lastPeakTime = 0;
+    let peakThreshold = 0.2;
+    let valleyThreshold = -0.1;
+    let wasAbove = false;
+
+    function initMotionDetection() {
+      // Start calibration
+      isCalibrating = true;
+      calibrationSamples = 0;
+      baselineNoiseLevel = 0.05;
+      accelerationBuffer = [];
+      updateStatus("calibrating", 0);
+      
+      window.addEventListener('devicemotion', motionHandler);
+    }
+
+    function lowPassFilter(newValue, oldValue, alpha) {
+      return alpha * newValue + (1 - alpha) * oldValue;
+    }
+
+    function calculateMagnitude(accel) {
+      return Math.sqrt(
+        accel.x * accel.x + 
+        accel.y * accel.y + 
+        accel.z * accel.z
+      );
+    }
+
+    function motionHandler(event) {
+      if (!event.accelerationIncludingGravity) return;
+      
+      const accel = event.accelerationIncludingGravity;
+      const currentMagnitude = calculateMagnitude(accel);
+      
+      // Apply low-pass filter to smooth the data
+      filteredAcceleration = lowPassFilter(currentMagnitude, filteredAcceleration, 0.2);
+      
+      // Store in buffer for analysis
+      accelerationBuffer.push(filteredAcceleration);
+      if (accelerationBuffer.length > bufferSize) {
+        accelerationBuffer.shift();
+      }
+      
+      // Calculate variance in the buffer
+      const mean = accelerationBuffer.reduce((a, b) => a + b, 0) / accelerationBuffer.length;
+      const variance = accelerationBuffer.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / accelerationBuffer.length;
+      
+      // Calibration phase - first 50 samples
+      if (isCalibrating) {
+        calibrationSamples++;
+        
+        if (calibrationSamples < 50) {
+          // Still calibrating
+          const progress = Math.min(1, calibrationSamples / 50);
+          updateStatus("calibrating", progress);
+        } else {
+          // Finish calibration
+          isCalibrating = false;
+          baselineNoiseLevel = Math.max(0.02, variance * 1.5);
+          updateStatus("stopped", 0.5);
+        }
+        
+        lastAcceleration = { x: accel.x, y: accel.y, z: accel.z };
+        updateStats(currentMagnitude, filteredAcceleration, stepCount);
+        return;
+      }
+      
+      // Step detection algorithm (for walking)
+      const delta = filteredAcceleration - mean;
+      
+      if (delta > peakThreshold && !wasAbove) {
+        // Detect potential step (peak)
+        const now = Date.now();
+        if (now - lastPeakTime > 300) { // Minimum 300ms between steps
+          stepCount++;
+          lastPeakTime = now;
+          stepHistory.push(now);
+          
+          // Keep only steps from last 10 seconds
+          stepHistory = stepHistory.filter(time => now - time < 10000);
+        }
+        wasAbove = true;
+      } else if (delta < valleyThreshold && wasAbove) {
+        wasAbove = false;
+      }
+      
+      // Determine movement state with confidence
+      const stepsPerMinute = stepHistory.length * 6; // Steps in last 10 seconds * 6
+      const isLikelyWalking = stepsPerMinute > 60 && stepsPerMinute < 180;
+      
+      if (variance > threshold) {
+        // Significant movement detected
+        if (movementState !== "moving") {
+          movementState = "moving";
+          movementConfidence = 0.5;
+        } else {
+          movementConfidence = Math.min(1, movementConfidence + 0.1);
+        }
+        
+        // Boost confidence if we detect walking pattern
+        if (isLikelyWalking) {
+          movementConfidence = Math.min(1, movementConfidence + 0.2);
+        }
+      } else if (variance < stabilityThreshold) {
+        // Very stable reading - likely stopped
+        if (movementState !== "stopped") {
+          movementState = "stopped";
+          movementConfidence = 0.5;
+        } else {
+          movementConfidence = Math.min(1, movementConfidence + 0.1);
+        }
+        
+        // Reduce confidence if we detect steps
+        if (isLikelyWalking) {
+          movementConfidence = Math.max(0.1, movementConfidence - 0.3);
+        }
+      } else {
+        // Intermediate state - reduce confidence gradually
+        movementConfidence = Math.max(0, movementConfidence - 0.05);
+      }
+      
+      // Update UI
+      updateStatus(movementState, movementConfidence);
+      updateStats(currentMagnitude, filteredAcceleration, stepCount);
+      
+      lastAcceleration = { x: accel.x, y: accel.y, z: accel.z };
+    }
+
+    document.getElementById("startBtn").addEventListener("click", startDetection);
+  </script>
 </body>
 </html>

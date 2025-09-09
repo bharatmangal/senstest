@@ -8,12 +8,12 @@
     body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
     h1 { font-size: 1.5rem; }
     #status { font-size: 1.3rem; margin-top: 20px; padding: 10px; border: 2px solid #333; display: inline-block; }
-    button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; }
+    button { margin: 5px; padding: 10px 15px; font-size: 1rem; }
     .moving { color: green; }
     .stopped { color: red; }
     .controls { margin-top: 20px; }
     .controls label { display: block; margin: 10px 0 5px; }
-    #sensorData { margin-top: 20px; text-align: left; display: inline-block; }
+    #sensorData { margin-top: 20px; text-align: left; display: inline-block; max-height: 300px; overflow-y: auto; }
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #333; padding: 5px; text-align: center; }
   </style>
@@ -30,6 +30,17 @@
 
     <label for="bufferSize">Buffer Size (Readings: <span id="bufferValue">5</span>)</label>
     <input type="range" id="bufferSize" min="1" max="20" step="1" value="5">
+  </div>
+
+  <div class="controls">
+    <h3>Axis Filters</h3>
+    <button onclick="setAxisFilter('all')">All</button>
+    <button onclick="setAxisFilter('x')">Ignore X</button>
+    <button onclick="setAxisFilter('y')">Ignore Y</button>
+    <button onclick="setAxisFilter('z')">Ignore Z</button>
+    <button onclick="setAxisFilter('xy')">Ignore X+Y</button>
+    <button onclick="setAxisFilter('yz')">Ignore Y+Z</button>
+    <button onclick="setAxisFilter('zx')">Ignore Z+X</button>
   </div>
 
   <div id="sensorData">
@@ -60,6 +71,7 @@
     let threshold = parseFloat(thresholdSlider.value);
     let bufferSize = parseInt(bufferSlider.value);
     let motionData = [];
+    let axisFilter = "all"; // default
 
     thresholdSlider.addEventListener("input", () => {
       threshold = parseFloat(thresholdSlider.value);
@@ -70,6 +82,11 @@
       bufferSize = parseInt(bufferSlider.value);
       bufferValueEl.textContent = bufferSize;
     });
+
+    function setAxisFilter(filter) {
+      axisFilter = filter;
+      alert("Axis filter set to: " + filter.toUpperCase());
+    }
 
     function updateStatus(isMoving) {
       if (isMoving) {
@@ -104,9 +121,11 @@
       if (!event.accelerationIncludingGravity) return;
 
       const acc = event.accelerationIncludingGravity;
-      const dx = acc.x - lastAcceleration.x;
-      const dy = acc.y - lastAcceleration.y;
-      const dz = acc.z - lastAcceleration.z;
+
+      // Apply axis filter
+      let dx = (axisFilter.includes('x')) ? 0 : acc.x - lastAcceleration.x;
+      let dy = (axisFilter.includes('y')) ? 0 : acc.y - lastAcceleration.y;
+      let dz = (axisFilter.includes('z')) ? 0 : acc.z - lastAcceleration.z;
 
       const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
@@ -145,9 +164,9 @@
     document.getElementById("startBtn").addEventListener("click", startDetection);
 
     document.getElementById("downloadBtn").addEventListener("click", () => {
-      let csvContent = "data:text/csv;charset=utf-8,Timestamp,X,Y,Z,Status\n";
+      let csvContent = "data:text/csv;charset=utf-8,Timestamp,X,Y,Z,Status\\n";
       motionData.forEach(row => {
-        csvContent += `${row.timestamp},${row.x},${row.y},${row.z},${row.status}\n`;
+        csvContent += `${row.timestamp},${row.x},${row.y},${row.z},${row.status}\\n`;
       });
 
       const encodedUri = encodeURI(csvContent);

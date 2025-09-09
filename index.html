@@ -50,6 +50,7 @@
 
     let lastAcceleration = { x: 0, y: 0, z: 0 };
     let moving = false;
+    let lastMoveTime = Date.now();
 
     function motionHandler(event) {
       if (!event.accelerationIncludingGravity) return;
@@ -61,14 +62,21 @@
 
       const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-      // Threshold to detect movement (tune if needed)
+      // Detect movement if threshold exceeded
       if (delta > 1.0) {
-        moving = true;
-      } else {
-        moving = false;
+        lastMoveTime = Date.now();
+        if (!moving) {
+          moving = true;
+          updateStatus(true);
+        }
       }
 
-      updateStatus(moving);
+      // If no movement for 2000ms, consider stopped
+      if (moving && Date.now() - lastMoveTime > 2000) {
+        moving = false;
+        updateStatus(false);
+      }
+
       lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
     }
 

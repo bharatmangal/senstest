@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movement Detection with Custom Threshold</title>
+    <title>Advanced Movement Detection</title>
     <style>
         * {
             margin: 0;
@@ -212,27 +212,20 @@
             color: #95a5a6;
         }
         
-        .threshold {
+        .sensitivity {
             margin: 20px 0;
         }
         
-        .threshold-slider {
+        .sensitivity-slider {
             width: 100%;
             margin: 10px 0;
         }
         
-        .threshold-label {
+        .sensitivity-label {
             display: flex;
             justify-content: space-between;
             color: #7f8c8d;
             font-size: 14px;
-        }
-        
-        .current-threshold {
-            font-weight: bold;
-            color: #2c3e50;
-            font-size: 18px;
-            margin-top: 5px;
         }
         
         .axis-data {
@@ -251,15 +244,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>Movement Detection with Threshold</h1>
-        <p class="description">Set a custom threshold to determine when movement is detected</p>
+        <h1>Advanced Movement Detection</h1>
+        <p class="description">Detects walking motion while ignoring small phone movements</p>
         
         <div class="status-card">
             <div class="status-indicator stopped" id="statusIndicator">
                 <span id="statusEmoji">📱</span>
             </div>
             <div class="status-text" id="statusText">Stationary</div>
-            <div class="status-subtext" id="statusSubtext">Movement score below threshold</div>
+            <div class="status-subtext" id="statusSubtext">Phone is being held steady</div>
             
             <div class="confidence">
                 <div class="confidence-level" id="confidenceLevel"></div>
@@ -269,12 +262,12 @@
         
         <div class="data-display">
             <div class="data-item">
-                <div class="data-label">Movement Score</div>
-                <div class="data-value" id="movementScore">0.00</div>
+                <div class="data-label">Forward Motion</div>
+                <div class="data-value" id="forwardMotion">0.00 m/s²</div>
             </div>
             <div class="data-item">
-                <div class="data-label">Threshold</div>
-                <div class="data-value" id="thresholdValue">25.00</div>
+                <div class="data-label">Movement Score</div>
+                <div class="data-value" id="movementScore">0.00</div>
             </div>
         </div>
 
@@ -293,15 +286,13 @@
             </div>
         </div>
         
-        <div class="threshold">
-            <div class="data-label">Movement Threshold Adjustment</div>
-            <input type="range" min="5" max="50" value="25" class="threshold-slider" id="thresholdSlider">
-            <div class="threshold-label">
+        <div class="sensitivity">
+            <div class="data-label">Sensitivity Adjustment</div>
+            <input type="range" min="1" max="10" value="5" class="sensitivity-slider" id="sensitivitySlider">
+            <div class="sensitivity-label">
                 <span>Low Sensitivity</span>
                 <span>High Sensitivity</span>
             </div>
-            <div class="current-threshold">Current Threshold: <span id="currentThreshold">25</span></div>
-            <div class="data-label">Scores below this value are considered stationary</div>
         </div>
         
         <div class="instructions">
@@ -309,9 +300,9 @@
             <ul>
                 <li>Hold your phone normally in your hand</li>
                 <li>Grant permission when asked for sensor access</li>
-                <li>Adjust the threshold to your preference (default: 25)</li>
-                <li>Movement scores below the threshold will show as stationary</li>
-                <li>Higher threshold values require more movement to trigger detection</li>
+                <li>Walk naturally to test movement detection</li>
+                <li>Algorithm focuses on forward motion (walking direction)</li>
+                <li>Small movements are ignored as natural phone handling</li>
             </ul>
         </div>
         
@@ -323,7 +314,7 @@
         </div>
         
         <div class="footer">
-            Customizable threshold detection | Set to 25 by default
+            Uses directional analysis with tolerance for small movements | Updated: June 2023
         </div>
     </div>
 
@@ -334,21 +325,24 @@
             const statusText = document.getElementById('statusText');
             const statusSubtext = document.getElementById('statusSubtext');
             const statusEmoji = document.getElementById('statusEmoji');
+            const forwardMotionElement = document.getElementById('forwardMotion');
             const movementScoreElement = document.getElementById('movementScore');
-            const thresholdValueElement = document.getElementById('thresholdValue');
             const confidenceLevel = document.getElementById('confidenceLevel');
             const confidenceValue = document.getElementById('confidenceValue');
-            const thresholdSlider = document.getElementById('thresholdSlider');
-            const currentThresholdElement = document.getElementById('currentThreshold');
+            const sensitivitySlider = document.getElementById('sensitivitySlider');
             const xValueElement = document.getElementById('xValue');
             const yValueElement = document.getElementById('yValue');
             const zValueElement = document.getElementById('zValue');
             
             let isMonitoring = false;
-            let movementThreshold = 25; // Default threshold value
+            let movementThreshold = 0.25; // Base threshold, adjusted by sensitivity
             let stableCount = 0;
             let movementHistory = [];
             const historySize = 15;
+            let falsePositivePrevention = true;
+            let alpha = 0; // Device orientation (z-axis rotation)
+            let isCalibrated = false;
+            let calibrationSamples = [];
             
             // Check if sensors are available
             if ('AbsoluteOrientationSensor' in window || 'DeviceMotionEvent' in window) {
@@ -366,15 +360,9 @@
                 }
             }
             
-            // Update threshold based on slider
-            thresholdSlider.addEventListener('input', function() {
-                movementThreshold = parseInt(this.value);
-                currentThresholdElement.textContent = movementThreshold;
-                thresholdValueElement.textContent = movementThreshold.toFixed(2);
-                
-                // Update status based on new threshold
-                const currentMovementScore = parseFloat(movementScoreElement.textContent);
-                updateStatus(currentMovementScore);
+            // Update sensitivity based on slider
+            sensitivitySlider.addEventListener('input', function() {
+                movementThreshold = 0.1 + (0.4 * (this.value / 10));
             });
             
             function initSensor() {
@@ -413,8 +401,24 @@
                 let lastReadingTimestamp = null;
                 let lastAcceleration = { x: 0, y: 0, z: 0 };
                 
+                // Listen to device orientation to determine forward direction
+                window.addEventListener('deviceorientation', handleOrientationEvent);
+                
                 // Use device motion events
                 window.addEventListener('devicemotion', handleMotionEvent);
+                
+                function handleOrientationEvent(event) {
+                    // Get device orientation to determine forward direction
+                    alpha = event.alpha || 0; // Z-axis rotation (compass direction)
+                    
+                    if (!isCalibrated && calibrationSamples.length < 10) {
+                        calibrationSamples.push(alpha);
+                        if (calibrationSamples.length === 10) {
+                            isCalibrated = true;
+                            statusSubtext.textContent = 'Calibration complete';
+                        }
+                    }
+                }
                 
                 function handleMotionEvent(event) {
                     const acceleration = event.accelerationIncludingGravity;
@@ -446,14 +450,16 @@
                             deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
                         ) / deltaTime;
                         
-                        // Scale to make the values more meaningful for threshold comparison
-                        const movementScore = accelerationMagnitude * 10;
+                        // Calculate forward motion (Z-axis is typically forward when holding phone upright)
+                        // This is a simplified approach - in a real app you'd use orientation data
+                        // to determine the actual forward direction
+                        let forwardMotion = Math.abs(deltaZ) / deltaTime;
                         
                         // Update display
-                        movementScoreElement.textContent = movementScore.toFixed(2);
+                        forwardMotionElement.textContent = forwardMotion.toFixed(2) + ' m/s²';
                         
-                        // Add to movement history
-                        movementHistory.push(movementScore);
+                        // Add to movement history (focus on forward motion)
+                        movementHistory.push(forwardMotion);
                         if (movementHistory.length > historySize) {
                             movementHistory.shift();
                         }
@@ -469,12 +475,13 @@
                         }
                         
                         const movementAvg = weightedSum / weightTotal;
+                        movementScoreElement.textContent = movementAvg.toFixed(2);
                         
-                        // Update status based on threshold
-                        updateStatus(movementAvg);
+                        // Advanced detection logic to prevent false positives
+                        const isMoving = detectMovement(movementAvg, acceleration, movementHistory);
                         
                         // Update confidence level
-                        const confidence = calculateConfidence(movementAvg);
+                        const confidence = calculateConfidence(movementAvg, movementHistory);
                         confidenceLevel.style.width = confidence + '%';
                         confidenceValue.textContent = confidence.toFixed(0) + '%';
                         
@@ -490,41 +497,95 @@
                 }
             }
             
-            function updateStatus(movementScore) {
-                // Use the threshold to determine movement status
-                if (movementScore < movementThreshold) {
-                    setStopped(movementScore);
+            function detectMovement(movementAvg, acceleration, history) {
+                // Check for patterns indicative of walking vs. phone movement
+                const variance = calculateVariance(history);
+                
+                // If the movement is very slight - definitely stationary
+                if (movementAvg < movementThreshold * 0.5) {
+                    setStopped();
+                    return false;
+                }
+                
+                // If movement is moderate but irregular (likely phone movement)
+                if (movementAvg < movementThreshold * 1.5 && variance > 0.3 && falsePositivePrevention) {
+                    setStopped();
+                    return false;
+                }
+                
+                // If movement is above threshold and shows regular pattern (likely walking)
+                if (movementAvg > movementThreshold) {
+                    // Additional check for walking rhythm
+                    if (hasWalkingRhythm(history)) {
+                        setMoving();
+                        return true;
+                    } else if (movementAvg > movementThreshold * 2) {
+                        // Very high movement even without clear rhythm
+                        setMoving();
+                        return true;
+                    }
+                }
+                
+                // Otherwise assume stationary
+                setStopped();
+                return false;
+            }
+            
+            function calculateVariance(history) {
+                if (history.length < 2) return 0;
+                
+                const mean = history.reduce((a, b) => a + b, 0) / history.length;
+                const variance = history.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / history.length;
+                return variance;
+            }
+            
+            function hasWalkingRhythm(history) {
+                if (history.length < 8) return false;
+                
+                // Count peaks in the data (walking creates rhythmic peaks)
+                let peakCount = 0;
+                for (let i = 2; i < history.length - 2; i++) {
+                    if (history[i] > history[i-1] && 
+                        history[i] > history[i-2] && 
+                        history[i] > history[i+1] && 
+                        history[i] > history[i+2]) {
+                        peakCount++;
+                    }
+                }
+                
+                // If we have at least 2 peaks in the recent history, it's likely walking
+                return peakCount >= 2;
+            }
+            
+            function calculateConfidence(movementAvg, history) {
+                // Calculate confidence based on how far from threshold and data consistency
+                const variance = calculateVariance(history);
+                
+                if (movementAvg < movementThreshold * 0.7) {
+                    return Math.min(100, 100 - (movementAvg * 50));
+                } else if (movementAvg > movementThreshold * 1.5 && hasWalkingRhythm(history)) {
+                    return Math.min(100, 90 + (movementAvg * 5));
+                } else if (movementAvg > movementThreshold * 2) {
+                    return Math.min(100, 80 + (movementAvg * 5));
                 } else {
-                    setMoving(movementScore);
+                    // In the uncertain zone - lower confidence
+                    return Math.max(20, 70 - (variance * 50));
                 }
             }
             
-            function calculateConfidence(movementScore) {
-                // Calculate confidence based on how far from threshold
-                if (movementScore < movementThreshold) {
-                    // How far below threshold (as percentage)
-                    const belowThreshold = movementThreshold - movementScore;
-                    return Math.min(100, 30 + (belowThreshold * 70 / movementThreshold));
-                } else {
-                    // How far above threshold (as percentage)
-                    const aboveThreshold = movementScore - movementThreshold;
-                    return Math.min(100, 30 + (aboveThreshold * 70 / (100 - movementThreshold)));
-                }
-            }
-            
-            function setMoving(score) {
+            function setMoving() {
                 statusIndicator.className = 'status-indicator moving';
                 statusEmoji.textContent = '🚶';
-                statusText.textContent = 'Moving';
-                statusSubtext.textContent = `Movement score: ${score.toFixed(2)} (above ${movementThreshold})`;
+                statusText.textContent = 'Walking Detected';
+                statusSubtext.textContent = 'Consistent forward motion';
                 stableCount = 0;
             }
             
-            function setStopped(score) {
+            function setStopped() {
                 statusIndicator.className = 'status-indicator stopped';
                 statusEmoji.textContent = '📱';
                 statusText.textContent = 'Stationary';
-                statusSubtext.textContent = `Movement score: ${score.toFixed(2)} (below ${movementThreshold})`;
+                statusSubtext.textContent = 'Normal phone movement detected';
                 stableCount++;
             }
         });

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movement Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            transition: all 0.5s ease;
+        }
+        
+        .stopped {
+            background-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+        
+        .moving {
+            background-color: #F44336;
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .status-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .data-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .data-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .data-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .compatibility {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .footer {
+            margin-top: 25px;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Movement Detection</h1>
+        
+        <div class="status-card">
+            <div class="status-indicator stopped" id="statusIndicator">
+                Stopped
+            </div>
+            <div class="status-text" id="statusText">Not Moving</div>
+        </div>
+        
+        <div class="data-display">
+            <div class="data-item">
+                <div class="data-label">Acceleration</div>
+                <div class="data-value" id="acceleration">0.00 m/s²</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">Movement Score</div>
+                <div class="data-value" id="movementScore">0.00</div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to use:</h3>
+            <ul>
+                <li>Hold your phone in your hand normally</li>
+                <li>Grant permission when asked for sensor access</li>
+                <li>Walk around to test movement detection</li>
+                <li>Stop walking to see status change</li>
+            </ul>
+        </div>
+        
+        <button id="startButton">Start Detection</button>
+        
+        <div class="compatibility">
+            Compatible with Android Chrome and iOS Safari
+        </div>
+        
+        <div class="footer">
+            Uses device motion and orientation sensors
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startButton = document.getElementById('startButton');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const accelerationElement = document.getElementById('acceleration');
+            const movementScoreElement = document.getElementById('movementScore');
+            
+            let isMonitoring = false;
+            let movementThreshold = 0.3; // Threshold for detecting movement
+            let stableCount = 0;
+            let movementHistory = [];
+            const historySize = 10;
+            
+            // Check if AbsoluteOrientationSensor is available
+            if ('AbsoluteOrientationSensor' in window) {
+                startButton.addEventListener('click', initSensor);
+            } else {
+                startButton.textContent = 'Sensor Not Available';
+                startButton.disabled = true;
+                statusText.textContent = 'Sensor API not supported';
+                
+                // Provide instructions based on platform
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    statusText.textContent = 'iOS: Ensure motion permissions are enabled';
+                } else if (/Android/i.test(navigator.userAgent)) {
+                    statusText.textContent = 'Android: Chrome browser required';
+                }
+            }
+            
+            function initSensor() {
+                if (isMonitoring) return;
+                
+                try {
+                    // Request permission for device orientation (iOS)
+                    if (typeof DeviceOrientationEvent !== 'undefined' && 
+                        typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        
+                        DeviceOrientationEvent.requestPermission()
+                            .then(permissionState => {
+                                if (permissionState === 'granted') {
+                                    startSensorMonitoring();
+                                } else {
+                                    statusText.textContent = 'Permission denied';
+                                }
+                            })
+                            .catch(console.error);
+                    } else {
+                        // For Android and other browsers
+                        startSensorMonitoring();
+                    }
+                } catch (error) {
+                    console.error('Error initializing sensor:', error);
+                    statusText.textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            function startSensorMonitoring() {
+                isMonitoring = true;
+                startButton.textContent = 'Monitoring...';
+                startButton.disabled = true;
+                
+                let lastReadingTimestamp = null;
+                let lastAcceleration = { x: 0, y: 0, z: 0 };
+                
+                // Use device motion events as a fallback
+                window.addEventListener('devicemotion', handleMotionEvent);
+                
+                function handleMotionEvent(event) {
+                    const acceleration = event.accelerationIncludingGravity;
+                    
+                    if (!acceleration) return;
+                    
+                    const currentTime = Date.now();
+                    let deltaTime = 0;
+                    
+                    if (lastReadingTimestamp) {
+                        deltaTime = (currentTime - lastReadingTimestamp) / 1000; // Convert to seconds
+                    }
+                    
+                    lastReadingTimestamp = currentTime;
+                    
+                    if (deltaTime > 0) {
+                        // Calculate acceleration change
+                        const deltaX = acceleration.x - lastAcceleration.x;
+                        const deltaY = acceleration.y - lastAcceleration.y;
+                        const deltaZ = acceleration.z - lastAcceleration.z;
+                        
+                        const accelerationMagnitude = Math.sqrt(
+                            deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ
+                        ) / deltaTime;
+                        
+                        // Update display
+                        accelerationElement.textContent = accelerationMagnitude.toFixed(2) + ' m/s²';
+                        
+                        // Add to movement history
+                        movementHistory.push(accelerationMagnitude);
+                        if (movementHistory.length > historySize) {
+                            movementHistory.shift();
+                        }
+                        
+                        // Calculate average movement
+                        const movementAvg = movementHistory.reduce((a, b) => a + b, 0) / movementHistory.length;
+                        movementScoreElement.textContent = movementAvg.toFixed(2);
+                        
+                        // Determine movement status
+                        if (movementAvg > movementThreshold) {
+                            stableCount = 0;
+                            setMoving();
+                        } else {
+                            stableCount++;
+                            if (stableCount > 5) { // Require consistent readings
+                                setStopped();
+                            }
+                        }
+                        
+                        lastAcceleration = {
+                            x: acceleration.x,
+                            y: acceleration.y,
+                            z: acceleration.z
+                        };
+                    }
+                }
+            }
+            
+            function setMoving() {
+                statusIndicator.className = 'status-indicator moving';
+                statusIndicator.textContent = 'Moving';
+                statusText.textContent = 'Person is moving';
+            }
+            
+            function setStopped() {
+                statusIndicator.className = 'status-indicator stopped';
+                statusIndicator.textContent = 'Stopped';
+                statusText.textContent = 'Person is stationary';
+            }
+        });
+    </script>
+</body>
+</html>

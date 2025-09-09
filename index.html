@@ -100,7 +100,7 @@
           updateStatus(true);
         }
       } else {
-        if (isMoving && Date.now() - lastMoveTime > 1000) {
+        if (isMoving && Date.now() - lastMoveTime > 500) {
           isMoving = false;
           updateStatus(false);
         }
@@ -113,3 +113,4 @@
   </script>
 </body>
 </html>
+
